@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"os"
 	"strings"
 )
 
@@ -46,35 +45,130 @@ func resolveDNSGoogle(recordName string, recordType string) (record_name string,
 
 	recordType = strings.ToUpper(recordType)
 
-	switch recordType {
-	case "A", "NS", "CNAME", "SOA", "PTR", "HINFO", "MX":
-		record_type = recordType
-	case "TXT", "RP", "AFSDB", "SIG", "KEY", "AAAA", "LOC":
-		record_type = recordType
-	case "SRV", "NAPTR", "KX", "CERT", "DNAME", "APL", "DS":
-		record_type = recordType
-	case "SSHFP", "IPSECKEY", "RRSIG", "NSEC", "DNSKEY", "DHCID":
-		record_type = recordType
-	case "NSEC3", "NSEC3PARAM", "TLSA", "SMIMEA", "HIP", "CDS":
-		record_type = recordType
-	case "CDNSKEY", "OPENPGPKEY", "CSYNC", "ZONEMD", "SVCB", "HTTPS":
-		record_type = recordType
-	case "EUI48", "EUI64", "TKEY", "TSIG", "URI", "CAA", "TA", "DLV":
-		record_type = recordType
-	default:
-		log.Fatalln("Unrecognized DNS Record type")
-		os.Exit(1)
-	}
-
 	var dnsRecord DNSRecord
 
 	if err := json.Unmarshal(body, &dnsRecord); err != nil {
-		log.Fatalln("Error Parsing JSON: ", err)
+		switch recordType {
+		case "A", "NS", "CNAME", "SOA", "PTR", "HINFO", "MX":
+			log.Fatalln("Error Parsing JSON: ", err)
+		case "TXT", "RP", "AFSDB", "SIG", "KEY", "AAAA", "LOC":
+			log.Fatalln("Error Parsing JSON: ", err)
+		case "SRV", "NAPTR", "KX", "CERT", "DNAME", "APL", "DS":
+			log.Fatalln("Error Parsing JSON: ", err)
+		case "SSHFP", "IPSECKEY", "RRSIG", "NSEC", "DNSKEY", "DHCID":
+			log.Fatalln("Error Parsing JSON: ", err)
+		case "NSEC3", "NSEC3PARAM", "TLSA", "SMIMEA", "HIP", "CDS":
+			log.Fatalln("Error Parsing JSON: ", err)
+		case "CDNSKEY", "OPENPGPKEY", "CSYNC", "ZONEMD", "SVCB", "HTTPS":
+			log.Fatalln("Error Parsing JSON: ", err)
+		case "EUI48", "EUI64", "TKEY", "TSIG", "URI", "CAA", "TA", "DLV":
+			log.Fatalln("Error Parsing JSON: ", err)
+		default:
+			log.Fatalln("Unrecognized DNS Record Type")
+		}
+
 	}
 
 	record_name = dnsRecord.Answer[0].Name
 	record_ttl = dnsRecord.Answer[0].TTL
 	record_value = dnsRecord.Answer[0].Data
+
+	switch dnsRecord.Answer[0].Type {
+	case 1:
+		record_type = "A"
+	case 2:
+		record_type = "NS"
+	case 5:
+		record_type = "CNAME"
+	case 6:
+		record_type = "SOA"
+	case 12:
+		record_type = "PTR"
+	case 13:
+		record_type = "HINFO"
+	case 15:
+		record_type = "MX"
+	case 16:
+		record_type = "TXT"
+	case 17:
+		record_type = "RP"
+	case 18:
+		record_type = "AFSDB"
+	case 24:
+		record_type = "SIG"
+	case 25:
+		record_type = "KEY"
+	case 28:
+		record_type = "AAAA"
+	case 29:
+		record_type = "LOC"
+	case 33:
+		record_type = "SRV"
+	case 35:
+		record_type = "NAPTR"
+	case 36:
+		record_type = "KX"
+	case 37:
+		record_type = "CERT"
+	case 39:
+		record_type = "DNAME"
+	case 42:
+		record_type = "APL"
+	case 43:
+		record_type = "DS"
+	case 44:
+		record_type = "SSHFP"
+	case 45:
+		record_type = "IPSECKEY"
+	case 46:
+		record_type = "RRSIG"
+	case 47:
+		record_type = "NSEC"
+	case 48:
+		record_type = "DNSKEY"
+	case 49:
+		record_type = "DHCID"
+	case 50:
+		record_type = "NSEC3"
+	case 51:
+		record_type = "NSEC3PARAM"
+	case 52:
+		record_type = "TLSA"
+	case 53:
+		record_type = "SMIMEA"
+	case 55:
+		record_type = "HIP"
+	case 59:
+		record_type = "CDS"
+	case 60:
+		record_type = "CDNSKEY"
+	case 61:
+		record_type = "OPENPGPKEY"
+	case 62:
+		record_type = "CSYNC"
+	case 63:
+		record_type = "ZONEMD"
+	case 64:
+		record_type = "SVCB"
+	case 65:
+		record_type = "HTTPS"
+	case 108:
+		record_type = "EUI48"
+	case 109:
+		record_type = "EUI64"
+	case 249:
+		record_type = "TKEY"
+	case 250:
+		record_type = "TSIG"
+	case 256:
+		record_type = "URI"
+	case 257:
+		record_type = "CAA"
+	case 32768:
+		record_type = "TA"
+	case 32769:
+		record_type = "DLV"
+	}
 
 	return strings.ToLower(record_name), record_type, record_ttl, record_value
 }
