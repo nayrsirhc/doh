@@ -22,9 +22,16 @@ type DNSRecord struct {
 	} `json: "Answer"`
 }
 
-func resolveDNSGoogle(recordName string) (record_name string, record_type string, record_ttl int, record_value string) {
+func resolveDNSGoogle(recordName string, recordType string) (record_name string, record_type string, record_ttl int, record_value string) {
 
-	resolveQuery := "https://dns.google/resolve?name=" + recordName
+	var resolveQuery string
+
+	if recordType == "Not Specified" {
+	    resolveQuery = "https://dns.google/resolve?name=" + recordName
+	} else {
+		resolveQuery = "https://dns.google/resolve?name=" + recordName + "&type=" + recordType
+	}
+
 	resp, err := http.Get(resolveQuery)
 	if err != nil {
 		log.Fatalln(err)
@@ -147,8 +154,9 @@ func resolveDNSGoogle(recordName string) (record_name string, record_type string
 func main() {
 
 	queryName := flag.String("n", "example.com", "The name of the record you wish to resolve")
+	queryType := flag.String("t", "Not Specified", "DNS Record Type")
 	flag.Parse()
 
-	fmt.Println(resolveDNSGoogle(*queryName))
+	fmt.Println(resolveDNSGoogle(*queryName, *queryType))
 
 }
