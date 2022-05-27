@@ -69,9 +69,14 @@ func resolveDNSGoogle(recordName string, recordType string) (record_name string,
 
 	}
 
-	record_name = dnsRecord.Answer[0].Name
-	record_ttl = dnsRecord.Answer[0].TTL
-	record_value = dnsRecord.Answer[0].Data
+	if len(dnsRecord.Answer) > 0 {
+		record_name = dnsRecord.Answer[0].Name
+		record_ttl = dnsRecord.Answer[0].TTL
+		record_value = dnsRecord.Answer[0].Data
+	} else {
+		log.Fatalln("Record Response is empty, please check query")
+	}
+
 
 	switch dnsRecord.Answer[0].Type {
 	case 1:
