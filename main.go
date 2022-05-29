@@ -23,25 +23,39 @@ type DNSRecord struct {
 	} `json: "Answer"`
 }
 
-func resolveDNSGoogle(recordName string, recordType string) (record_name []string, record_type []string, record_ttl []int, record_value []string) {
-
+func DOHRequest(provider string, recordName string, recordType string) (body []byte) {
 	var resolveQuery string
 
 	if recordType == "Not Specified" {
-		resolveQuery = "https://dns.google/resolve?name=" + recordName
+		resolveQuery = provider + recordName
 	} else {
-		resolveQuery = "https://dns.google/resolve?name=" + recordName + "&type=" + recordType
+		resolveQuery = provider + recordName + "&type=" + recordType
 	}
 
-	resp, err := http.Get(resolveQuery)
+	req, err := http.NewRequest("GET", resolveQuery, nil)
 	if err != nil {
 		log.Fatalln(err)
 	}
+	req.Header.Set("accept", "application/dns-json")
 	//We Read the response body on the line below.
-	body, err := ioutil.ReadAll(resp.Body)
+	client := &http.Client{}
+	resp, err := client.Do(req)
+
 	if err != nil {
 		log.Fatalln(err)
 	}
+
+	body, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	return body
+}
+
+func resolveDNSGoogle(recordName string, recordType string) (record_name []string, record_type []string, record_ttl []int, record_value []string) {
+
+	body := DOHRequest("https://dns.google/resolve?name=", recordName, recordType)
 
 	recordType = strings.ToUpper(recordType)
 
@@ -70,7 +84,7 @@ func resolveDNSGoogle(recordName string, recordType string) (record_name []strin
 	}
 
 	if len(dnsRecord.Answer) > 0 {
-		for _,record := range dnsRecord.Answer {
+		for _, record := range dnsRecord.Answer {
 			record_name = append(record_name, record.Name)
 			record_ttl = append(record_ttl, record.TTL)
 			record_value = append(record_value, record.Data)
@@ -186,11 +200,10 @@ func main() {
 	queryType := flag.String("t", "Not Specified", "DNS Record Type")
 	flag.Parse()
 
-	names,types,ttls,values := resolveDNSGoogle(*queryName, *queryType)
+	names, types, ttls, values := resolveDNSGoogle(*queryName, *queryType)
 
 	for i := range names {
 		fmt.Println(strings.ToLower(names[i]), strings.ToUpper(types[i]), ttls[i], values[i])
 	}
-	
 
 }
