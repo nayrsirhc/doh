@@ -53,34 +53,47 @@ func DOHRequest(provider string, recordName string, recordType string) (body []b
 	return body
 }
 
-func resolveDNSGoogle(recordName string, recordType string) (record_name []string, record_type []string, record_ttl []int, record_value []string) {
-
-	body := DOHRequest("https://dns.google/resolve?name=", recordName, recordType)
-
+func valdateRecordType(recordType string) (record_type string) {
 	recordType = strings.ToUpper(recordType)
+	switch recordType {
+	case "A", "NS", "CNAME", "SOA", "PTR", "HINFO", "MX":
+		record_type = recordType
+	case "TXT", "RP", "AFSDB", "SIG", "KEY", "AAAA", "LOC":
+		record_type = recordType
+	case "SRV", "NAPTR", "KX", "CERT", "DNAME", "APL", "DS":
+		record_type = recordType
+	case "NSEC3", "NSEC3PARAM", "TLSA", "SMIMEA", "HIP", "CDS":
+		record_type = recordType
+	case "CDNSKEY", "OPENPGPKEY", "CSYNC", "ZONEMD", "SVCB", "HTTPS":
+		record_type = recordType
+	case "EUI48", "EUI64", "TKEY", "TSIG", "URI", "CAA", "TA", "DLV":
+		record_type = recordType
+	default:
+		log.Fatalln("Unrecognized DNS Record Type")
+	}
+	return record_type
+}
+
+func resolveGoogle(recordName string, recordType string, c chan []byte) {
+	recordType = valdateRecordType(recordType)
+	body := DOHRequest("https://dns.google/resolve?name=", recordName, recordType)
+	c <- body
+	close(c)
+}
+
+func resolveCloudflare(recordName string, recordType string, c chan []byte) {
+	recordType = valdateRecordType(recordType)
+	body := DOHRequest("https://1.1.1.1/dns-query?name=", recordName, recordType)
+	c <- body
+	close(c)
+}
+
+func resolveDNS(body []byte) (record_name []string, record_type []string, record_ttl []int, record_value []string) {
 
 	var dnsRecord DNSRecord
 
 	if err := json.Unmarshal(body, &dnsRecord); err != nil {
-		switch recordType {
-		case "A", "NS", "CNAME", "SOA", "PTR", "HINFO", "MX":
-			log.Fatalln("Error Parsing JSON: ", err)
-		case "TXT", "RP", "AFSDB", "SIG", "KEY", "AAAA", "LOC":
-			log.Fatalln("Error Parsing JSON: ", err)
-		case "SRV", "NAPTR", "KX", "CERT", "DNAME", "APL", "DS":
-			log.Fatalln("Error Parsing JSON: ", err)
-		case "SSHFP", "IPSECKEY", "RRSIG", "NSEC", "DNSKEY", "DHCID":
-			log.Fatalln("Error Parsing JSON: ", err)
-		case "NSEC3", "NSEC3PARAM", "TLSA", "SMIMEA", "HIP", "CDS":
-			log.Fatalln("Error Parsing JSON: ", err)
-		case "CDNSKEY", "OPENPGPKEY", "CSYNC", "ZONEMD", "SVCB", "HTTPS":
-			log.Fatalln("Error Parsing JSON: ", err)
-		case "EUI48", "EUI64", "TKEY", "TSIG", "URI", "CAA", "TA", "DLV":
-			log.Fatalln("Error Parsing JSON: ", err)
-		default:
-			log.Fatalln("Unrecognized DNS Record Type")
-		}
-
+		log.Fatalln(err)
 	}
 
 	if len(dnsRecord.Answer) > 0 {
@@ -200,7 +213,22 @@ func main() {
 	queryType := flag.String("t", "Not Specified", "DNS Record Type")
 	flag.Parse()
 
-	names, types, ttls, values := resolveDNSGoogle(*queryName, *queryType)
+	google := make(chan []byte)
+	cloudflare := make(chan []byte)
+
+	go resolveGoogle(*queryName, *queryType, google)
+	go resolveCloudflare(*queryName, *queryType, cloudflare)
+
+	var body []byte
+
+	select {
+	case x := <-google:
+		body = x
+	case y := <-cloudflare:
+		body = y
+	}
+
+	names, types, ttls, values := resolveDNS(body)
 
 	for i := range names {
 		fmt.Println(strings.ToLower(names[i]), strings.ToUpper(types[i]), ttls[i], values[i])
