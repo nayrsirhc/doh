@@ -23,7 +23,7 @@ type DNSRecord struct {
 	} `json: "Answer"`
 }
 
-func resolveDNSGoogle(recordName string, recordType string) (record_name string, record_type string, record_ttl int, record_value string) {
+func resolveDNSGoogle(recordName string, recordType string) (record_name []string, record_type []string, record_ttl []int, record_value []string) {
 
 	var resolveQuery string
 
@@ -70,112 +70,114 @@ func resolveDNSGoogle(recordName string, recordType string) (record_name string,
 	}
 
 	if len(dnsRecord.Answer) > 0 {
-		record_name = dnsRecord.Answer[0].Name
-		record_ttl = dnsRecord.Answer[0].TTL
-		record_value = dnsRecord.Answer[0].Data
+		for _,record := range dnsRecord.Answer {
+			record_name = append(record_name, record.Name)
+			record_ttl = append(record_ttl, record.TTL)
+			record_value = append(record_value, record.Data)
+			var value string
+			switch record.Type {
+			case 1:
+				value = "A"
+			case 2:
+				value = "NS"
+			case 5:
+				value = "CNAME"
+			case 6:
+				value = "SOA"
+			case 12:
+				value = "PTR"
+			case 13:
+				value = "HINFO"
+			case 15:
+				value = "MX"
+			case 16:
+				value = "TXT"
+			case 17:
+				value = "RP"
+			case 18:
+				value = "AFSDB"
+			case 24:
+				value = "SIG"
+			case 25:
+				value = "KEY"
+			case 28:
+				value = "AAAA"
+			case 29:
+				value = "LOC"
+			case 33:
+				value = "SRV"
+			case 35:
+				value = "NAPTR"
+			case 36:
+				value = "KX"
+			case 37:
+				value = "CERT"
+			case 39:
+				value = "DNAME"
+			case 42:
+				value = "APL"
+			case 43:
+				value = "DS"
+			case 44:
+				value = "SSHFP"
+			case 45:
+				value = "IPSECKEY"
+			case 46:
+				value = "RRSIG"
+			case 47:
+				value = "NSEC"
+			case 48:
+				value = "DNSKEY"
+			case 49:
+				value = "DHCID"
+			case 50:
+				value = "NSEC3"
+			case 51:
+				value = "NSEC3PARAM"
+			case 52:
+				value = "TLSA"
+			case 53:
+				value = "SMIMEA"
+			case 55:
+				value = "HIP"
+			case 59:
+				value = "CDS"
+			case 60:
+				value = "CDNSKEY"
+			case 61:
+				value = "OPENPGPKEY"
+			case 62:
+				value = "CSYNC"
+			case 63:
+				value = "ZONEMD"
+			case 64:
+				value = "SVCB"
+			case 65:
+				value = "HTTPS"
+			case 108:
+				value = "EUI48"
+			case 109:
+				value = "EUI64"
+			case 249:
+				value = "TKEY"
+			case 250:
+				value = "TSIG"
+			case 256:
+				value = "URI"
+			case 257:
+				value = "CAA"
+			case 32768:
+				value = "TA"
+			case 32769:
+				value = "DLV"
+			}
+			record_type = append(record_type, value)
+		}
 	} else {
 		log.Fatalln("Record Response is empty, please check query")
 	}
 
-
-	switch dnsRecord.Answer[0].Type {
-	case 1:
-		record_type = "A"
-	case 2:
-		record_type = "NS"
-	case 5:
-		record_type = "CNAME"
-	case 6:
-		record_type = "SOA"
-	case 12:
-		record_type = "PTR"
-	case 13:
-		record_type = "HINFO"
-	case 15:
-		record_type = "MX"
-	case 16:
-		record_type = "TXT"
-	case 17:
-		record_type = "RP"
-	case 18:
-		record_type = "AFSDB"
-	case 24:
-		record_type = "SIG"
-	case 25:
-		record_type = "KEY"
-	case 28:
-		record_type = "AAAA"
-	case 29:
-		record_type = "LOC"
-	case 33:
-		record_type = "SRV"
-	case 35:
-		record_type = "NAPTR"
-	case 36:
-		record_type = "KX"
-	case 37:
-		record_type = "CERT"
-	case 39:
-		record_type = "DNAME"
-	case 42:
-		record_type = "APL"
-	case 43:
-		record_type = "DS"
-	case 44:
-		record_type = "SSHFP"
-	case 45:
-		record_type = "IPSECKEY"
-	case 46:
-		record_type = "RRSIG"
-	case 47:
-		record_type = "NSEC"
-	case 48:
-		record_type = "DNSKEY"
-	case 49:
-		record_type = "DHCID"
-	case 50:
-		record_type = "NSEC3"
-	case 51:
-		record_type = "NSEC3PARAM"
-	case 52:
-		record_type = "TLSA"
-	case 53:
-		record_type = "SMIMEA"
-	case 55:
-		record_type = "HIP"
-	case 59:
-		record_type = "CDS"
-	case 60:
-		record_type = "CDNSKEY"
-	case 61:
-		record_type = "OPENPGPKEY"
-	case 62:
-		record_type = "CSYNC"
-	case 63:
-		record_type = "ZONEMD"
-	case 64:
-		record_type = "SVCB"
-	case 65:
-		record_type = "HTTPS"
-	case 108:
-		record_type = "EUI48"
-	case 109:
-		record_type = "EUI64"
-	case 249:
-		record_type = "TKEY"
-	case 250:
-		record_type = "TSIG"
-	case 256:
-		record_type = "URI"
-	case 257:
-		record_type = "CAA"
-	case 32768:
-		record_type = "TA"
-	case 32769:
-		record_type = "DLV"
-	}
-
-	return strings.ToLower(record_name), record_type, record_ttl, record_value
+	return record_name, record_type, record_ttl, record_value
 }
 
 func main() {
@@ -184,6 +186,11 @@ func main() {
 	queryType := flag.String("t", "Not Specified", "DNS Record Type")
 	flag.Parse()
 
-	fmt.Println(resolveDNSGoogle(*queryName, *queryType))
+	names,types,ttls,values := resolveDNSGoogle(*queryName, *queryType)
+
+	for i := range names {
+		fmt.Println(strings.ToLower(names[i]), strings.ToUpper(types[i]), ttls[i], values[i])
+	}
+	
 
 }
