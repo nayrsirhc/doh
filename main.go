@@ -12,15 +12,15 @@ import (
 
 type DNSRecord struct {
 	Question []struct {
-		Name string `json: "name"`
-		Type int    `json: "type"`
-	} `json: "Question"`
+		Name string `json:"name"`
+		Type int    `json:"type"`
+	} `json:"Question"`
 	Answer []struct {
-		Name string `json: "name"`
-		Type int    `json: "type"`
-		TTL  int    `json: "TTL"`
-		Data string `json: "data"`
-	} `json: "Answer"`
+		Name string `json:"name"`
+		Type int    `json:"type"`
+		TTL  int    `json:"TTL"`
+		Data string `json:"data"`
+	} `json:"Answer"`
 }
 
 func DOHRequest(provider string, recordName string, recordType string) (body []byte) {
