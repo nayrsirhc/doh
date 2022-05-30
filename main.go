@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"math"
 	"net/http"
 	"strings"
 )
@@ -209,8 +210,18 @@ func resolveDNS(body []byte) (record_name []string, record_type []string, record
 
 func main() {
 
+	colorReset := "\033[0m"
+    colorRed := "\033[31m"
+    colorGreen := "\033[32m"
+    colorYellow := "\033[33m"
+    // colorBlue := "\033[34m"
+    // colorPurple := "\033[35m"
+    // colorCyan := "\033[36m"
+    // colorWhite := "\033[37m"
+
 	queryName := flag.String("n", "example.com", "The name of the record you wish to resolve")
 	queryType := flag.String("t", "Not Specified", "DNS Record Type")
+	colorSet := flag.Bool("c", false, "Set if you want colour ")
 	flag.Parse()
 
 	google := make(chan []byte)
@@ -231,7 +242,36 @@ func main() {
 	names, types, ttls, values := resolveDNS(body)
 
 	for i := range names {
-		fmt.Println(strings.ToLower(names[i]), strings.ToUpper(types[i]), ttls[i], values[i])
+		longest := math.Max(float64(len(names[i])), float64(len(types[i])))
+		longest = math.Max(longest, float64(len(values[i])))
+		divider := ""
+		for i := 0; i < int(longest); {
+			divider += "〰️"
+			i++
+		}
+		if *colorSet {
+			fmt.Printf("\n%s\n\n%s %s\n\n%s%s %s\n%s\n%s %d\t%s\n\n%s %s %s\n\n%s\n",
+			divider,
+			"Name 📘",
+			strings.ToLower(names[i]),
+			string(colorRed),
+			"Type 🪧 ",
+			strings.ToUpper(types[i]),
+			string(colorGreen),
+			"TTL ⌚️",
+			ttls[i],
+			string(colorYellow),
+			"Value 📖",
+			values[i],
+			string(colorReset),
+			divider)
+		} else {
+			fmt.Printf("%s\t%s\t%d\t%s\n",
+			strings.ToLower(names[i]),
+			strings.ToUpper(types[i]),
+			ttls[i],
+			values[i])
+		}
 	}
 
 }
