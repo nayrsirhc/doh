@@ -23,12 +23,34 @@ type DNSRecord struct {
 	} `json:"Answer"`
 }
 
+func valdateRecordType(recordType string) (record_type string) {
+	recordType = strings.ToUpper(recordType)
+	switch recordType {
+	case "A", "NS", "CNAME", "SOA", "PTR", "HINFO", "MX":
+		record_type = recordType
+	case "TXT", "RP", "AFSDB", "SIG", "KEY", "AAAA", "LOC":
+		record_type = recordType
+	case "SRV", "NAPTR", "KX", "CERT", "DNAME", "APL", "DS":
+		record_type = recordType
+	case "NSEC3", "NSEC3PARAM", "TLSA", "SMIMEA", "HIP", "CDS":
+		record_type = recordType
+	case "CDNSKEY", "OPENPGPKEY", "CSYNC", "ZONEMD", "SVCB", "HTTPS":
+		record_type = recordType
+	case "EUI48", "EUI64", "TKEY", "TSIG", "URI", "CAA", "TA", "DLV":
+		record_type = recordType
+	default:
+		log.Fatalln("Unrecognized DNS Record Type")
+	}
+	return record_type
+}
+
 func DOHRequest(provider string, recordName string, recordType string) (body []byte) {
 	var resolveQuery string
 
 	if recordType == "Not Specified" {
 		resolveQuery = provider + recordName
 	} else {
+	    recordType = valdateRecordType(recordType)
 		resolveQuery = provider + recordName + "&type=" + recordType
 	}
 
@@ -53,36 +75,13 @@ func DOHRequest(provider string, recordName string, recordType string) (body []b
 	return body
 }
 
-func valdateRecordType(recordType string) (record_type string) {
-	recordType = strings.ToUpper(recordType)
-	switch recordType {
-	case "A", "NS", "CNAME", "SOA", "PTR", "HINFO", "MX":
-		record_type = recordType
-	case "TXT", "RP", "AFSDB", "SIG", "KEY", "AAAA", "LOC":
-		record_type = recordType
-	case "SRV", "NAPTR", "KX", "CERT", "DNAME", "APL", "DS":
-		record_type = recordType
-	case "NSEC3", "NSEC3PARAM", "TLSA", "SMIMEA", "HIP", "CDS":
-		record_type = recordType
-	case "CDNSKEY", "OPENPGPKEY", "CSYNC", "ZONEMD", "SVCB", "HTTPS":
-		record_type = recordType
-	case "EUI48", "EUI64", "TKEY", "TSIG", "URI", "CAA", "TA", "DLV":
-		record_type = recordType
-	default:
-		log.Fatalln("Unrecognized DNS Record Type")
-	}
-	return record_type
-}
-
 func resolveGoogle(recordName string, recordType string, c chan []byte) {
-	recordType = valdateRecordType(recordType)
 	body := DOHRequest("https://dns.google/resolve?name=", recordName, recordType)
 	c <- body
 	close(c)
 }
 
 func resolveCloudflare(recordName string, recordType string, c chan []byte) {
-	recordType = valdateRecordType(recordType)
 	body := DOHRequest("https://1.1.1.1/dns-query?name=", recordName, recordType)
 	c <- body
 	close(c)
