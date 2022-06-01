@@ -89,7 +89,6 @@ func resolveCloudflare(recordName string, recordType string, c chan []byte) {
 	close(c)
 }
 
-
 func resolveQuad9(recordName string, recordType string, c chan []byte) {
 	recordType = valdateRecordType(recordType)
 	body := DOHRequest("https://dns.quad9.net:5053/dns-query?name=", recordName, recordType)
@@ -239,9 +238,9 @@ func runQuery(queryName, queryType string, extensive bool) {
 	names, types, ttls, values := decodeResponse(body)
 
 	if extensive && len(names) > 0 {
-		fmt.Printf("\n%s:\n\n", types[0])
+		fmt.Printf("\n%s:\n\n", queryType)
 	}
-	
+
 	for i := range names {
 		fmt.Printf("%s\t%s\t%d\t%s\n",
 			strings.ToLower(names[i]),
