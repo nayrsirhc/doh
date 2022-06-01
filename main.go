@@ -205,7 +205,7 @@ func decodeResponse(body []byte) (record_name []string, record_type []string, re
 	return record_name, record_type, record_ttl, record_value
 }
 
-func runQuery(queryName, queryType string) {
+func runQuery(queryName, queryType string, extensive bool) {
 	google := make(chan []byte)
 	cloudflare := make(chan []byte)
 	go resolveGoogle(queryName, queryType, google)
@@ -221,12 +221,16 @@ func runQuery(queryName, queryType string) {
 	}
 	names, types, ttls, values := decodeResponse(body)
 
+	if extensive && len(names) > 0 {
+		fmt.Printf("\n%s:\n\n", types[0])
+	}
+	
 	for i := range names {
 		fmt.Printf("%s\t%s\t%d\t%s\n",
-		strings.ToLower(names[i]),
-		strings.ToUpper(types[i]),
-		ttls[i],
-		values[i])
+			strings.ToLower(names[i]),
+			strings.ToUpper(types[i]),
+			ttls[i],
+			values[i])
 	}
 }
 
@@ -281,10 +285,8 @@ func main() {
 			"TA",
 			"DLV",
 		}
-		for _,record := range dnsRecords {
-			fmt.Printf("%s:\n\n", record)
-			runQuery(*queryName, record)
-			fmt.Printf("\n")
+		for _, record := range dnsRecords {
+			runQuery(*queryName, record, true)
 		}
 	} else if strings.ToUpper(*queryType) == "ALL" {
 
@@ -298,10 +300,10 @@ func main() {
 			"SRV",
 			"TXT",
 		}
-		for _,record := range dnsRecords {
-			runQuery(*queryName, record)
+		for _, record := range dnsRecords {
+			runQuery(*queryName, record, false)
 		}
 	} else {
-		runQuery(*queryName, *queryType)
+		runQuery(*queryName, *queryType, false)
 	}
 }
