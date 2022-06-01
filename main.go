@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 )
 
 type DNSRecord struct {
@@ -214,6 +215,7 @@ func decodeResponse(body []byte) (record_name []string, record_type []string, re
 }
 
 func runQuery(queryName, queryType string, extensive bool) {
+	timer1 := time.NewTimer(4 * time.Second)
 	google := make(chan []byte)
 	cloudflare := make(chan []byte)
 	quad9 := make(chan []byte)
@@ -230,6 +232,8 @@ func runQuery(queryName, queryType string, extensive bool) {
 		body = y
 	case z := <-quad9:
 		body = z
+	case <-timer1.C:
+		log.Fatalln("Request timed out")
 	}
 
 	names, types, ttls, values := decodeResponse(body)
