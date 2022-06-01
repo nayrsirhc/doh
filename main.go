@@ -88,12 +88,12 @@ func resolveCloudflare(recordName string, recordType string, c chan []byte) {
 	close(c)
 }
 
-func resolveDNS(body []byte) (record_name []string, record_type []string, record_ttl []int, record_value []string) {
+func decodeResponse(body []byte) (record_name []string, record_type []string, record_ttl []int, record_value []string) {
 
 	var dnsRecord DNSRecord
 
 	if err := json.Unmarshal(body, &dnsRecord); err != nil {
-		log.Fatalln(err)
+		log.Fatalln("Failed to decode: ", err)
 	}
 
 	if len(dnsRecord.Answer) > 0 {
@@ -200,24 +200,16 @@ func resolveDNS(body []byte) (record_name []string, record_type []string, record
 			}
 			record_type = append(record_type, value)
 		}
-	} else {
-		log.Fatalln("Record Response is empty, please check query")
 	}
 
 	return record_name, record_type, record_ttl, record_value
 }
 
-func main() {
-
-	queryName := flag.String("n", "example.com", "The name of the record you wish to resolve")
-	queryType := flag.String("t", "Not Specified", "DNS Record Type")
-	flag.Parse()
-
+func runQuery(queryName, queryType string) {
 	google := make(chan []byte)
 	cloudflare := make(chan []byte)
-
-	go resolveGoogle(*queryName, *queryType, google)
-	go resolveCloudflare(*queryName, *queryType, cloudflare)
+	go resolveGoogle(queryName, queryType, google)
+	go resolveCloudflare(queryName, queryType, cloudflare)
 
 	var body []byte
 
@@ -227,11 +219,89 @@ func main() {
 	case y := <-cloudflare:
 		body = y
 	}
-
-	names, types, ttls, values := resolveDNS(body)
+	names, types, ttls, values := decodeResponse(body)
 
 	for i := range names {
-		fmt.Println(strings.ToLower(names[i]), strings.ToUpper(types[i]), ttls[i], values[i])
+		fmt.Printf("%s\t%s\t%d\t%s\n",
+		strings.ToLower(names[i]),
+		strings.ToUpper(types[i]),
+		ttls[i],
+		values[i])
 	}
+}
 
+func main() {
+
+	queryName := flag.String("n", "example.com", "The name of the record you wish to resolve")
+	queryType := flag.String("t", "Not Specified", "DNS Record Type")
+	flag.Parse()
+
+	if strings.ToUpper(*queryType) == "EXTENSIVE" {
+
+		dnsRecords := []string{
+			"SOA",
+			"NS",
+			"A",
+			"AAAA",
+			"CNAME",
+			"MX",
+			"SRV",
+			"TXT",
+			"PTR",
+			"HINFO",
+			"RP",
+			"AFSDB",
+			"SIG",
+			"KEY",
+			"LOC",
+			"NAPTR",
+			"KX",
+			"CERT",
+			"DNAME",
+			"APL",
+			"DS",
+			"NSEC3",
+			"NSEC3PARAM",
+			"TLSA",
+			"SMIMEA",
+			"HIP",
+			"CDS",
+			"CDNSKEY",
+			"OPENPGPKEY",
+			"CSYNC",
+			"ZONEMD",
+			"SVCB",
+			"HTTPS",
+			"EUI48",
+			"EUI64",
+			"TKEY",
+			"TSIG",
+			"URI",
+			"CAA",
+			"TA",
+			"DLV",
+		}
+		for _,record := range dnsRecords {
+			fmt.Printf("%s:\n\n", record)
+			runQuery(*queryName, record)
+			fmt.Printf("\n")
+		}
+	} else if strings.ToUpper(*queryType) == "ALL" {
+
+		dnsRecords := []string{
+			"SOA",
+			"NS",
+			"A",
+			"AAAA",
+			"CNAME",
+			"MX",
+			"SRV",
+			"TXT",
+		}
+		for _,record := range dnsRecords {
+			runQuery(*queryName, record)
+		}
+	} else {
+		runQuery(*queryName, *queryType)
+	}
 }
