@@ -88,6 +88,14 @@ func resolveCloudflare(recordName string, recordType string, c chan []byte) {
 	close(c)
 }
 
+
+func resolveQuad9(recordName string, recordType string, c chan []byte) {
+	recordType = valdateRecordType(recordType)
+	body := DOHRequest("https://dns.quad9.net:5053/dns-query?name=", recordName, recordType)
+	c <- body
+	close(c)
+}
+
 func decodeResponse(body []byte) (record_name []string, record_type []string, record_ttl []int, record_value []string) {
 
 	var dnsRecord DNSRecord
@@ -208,8 +216,10 @@ func decodeResponse(body []byte) (record_name []string, record_type []string, re
 func runQuery(queryName, queryType string, extensive bool) {
 	google := make(chan []byte)
 	cloudflare := make(chan []byte)
+	quad9 := make(chan []byte)
 	go resolveGoogle(queryName, queryType, google)
 	go resolveCloudflare(queryName, queryType, cloudflare)
+	go resolveQuad9(queryName, queryType, quad9)
 
 	var body []byte
 
@@ -218,7 +228,10 @@ func runQuery(queryName, queryType string, extensive bool) {
 		body = x
 	case y := <-cloudflare:
 		body = y
+	case z := <-quad9:
+		body = z
 	}
+
 	names, types, ttls, values := decodeResponse(body)
 
 	if extensive && len(names) > 0 {
