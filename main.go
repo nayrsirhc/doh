@@ -30,6 +30,7 @@ func DOHRequest(provider string, recordName string, recordType string) (body []b
 	if recordType == "Not Specified" {
 		resolveQuery = provider + recordName
 	} else {
+	    valdateRecordType(recordType)
 		resolveQuery = provider + recordName + "&type=" + recordType
 	}
 
@@ -76,21 +77,18 @@ func valdateRecordType(recordType string) (record_type string) {
 }
 
 func resolveGoogle(recordName string, recordType string, c chan []byte) {
-	recordType = valdateRecordType(recordType)
 	body := DOHRequest("https://dns.google/resolve?name=", recordName, recordType)
 	c <- body
 	close(c)
 }
 
 func resolveCloudflare(recordName string, recordType string, c chan []byte) {
-	recordType = valdateRecordType(recordType)
 	body := DOHRequest("https://1.1.1.1/dns-query?name=", recordName, recordType)
 	c <- body
 	close(c)
 }
 
 func resolveQuad9(recordName string, recordType string, c chan []byte) {
-	recordType = valdateRecordType(recordType)
 	body := DOHRequest("https://dns.quad9.net:5053/dns-query?name=", recordName, recordType)
 	c <- body
 	close(c)
