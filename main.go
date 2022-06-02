@@ -30,7 +30,6 @@ func DOHRequest(provider string, recordName string, recordType string) (body []b
 	if recordType == "Not Specified" {
 		resolveQuery = provider + recordName
 	} else {
-	    valdateRecordType(recordType)
 		resolveQuery = provider + recordName + "&type=" + recordType
 	}
 
@@ -212,6 +211,7 @@ func decodeResponse(body []byte) (record_name []string, record_type []string, re
 }
 
 func runQuery(queryName, queryType string, extensive bool) {
+	valdateRecordType(queryType)
 	timer1 := time.NewTimer(4 * time.Second)
 	google := make(chan []byte)
 	cloudflare := make(chan []byte)
