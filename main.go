@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 )
 
 type DNSRecord struct {
@@ -54,46 +55,54 @@ func DOHRequest(provider string, recordName string, recordType string) (body []b
 }
 
 func valdateRecordType(recordType string) (record_type string) {
-	recordType = strings.ToUpper(recordType)
-	switch recordType {
-	case "A", "NS", "CNAME", "SOA", "PTR", "HINFO", "MX":
+	if recordType != "Not Specified" {
+		recordType = strings.ToUpper(recordType)
+		switch recordType {
+		case "A", "NS", "CNAME", "SOA", "PTR", "HINFO", "MX":
+			record_type = recordType
+		case "TXT", "RP", "AFSDB", "SIG", "KEY", "AAAA", "LOC":
+			record_type = recordType
+		case "SRV", "NAPTR", "KX", "CERT", "DNAME", "APL", "DS":
+			record_type = recordType
+		case "NSEC3", "NSEC3PARAM", "TLSA", "SMIMEA", "HIP", "CDS":
+			record_type = recordType
+		case "CDNSKEY", "OPENPGPKEY", "CSYNC", "ZONEMD", "SVCB", "HTTPS":
+			record_type = recordType
+		case "EUI48", "EUI64", "TKEY", "TSIG", "URI", "CAA", "TA", "DLV":
+			record_type = recordType
+		default:
+			log.Fatalln("Unrecognized DNS Record Type")
+		}
+	} else {
 		record_type = recordType
-	case "TXT", "RP", "AFSDB", "SIG", "KEY", "AAAA", "LOC":
-		record_type = recordType
-	case "SRV", "NAPTR", "KX", "CERT", "DNAME", "APL", "DS":
-		record_type = recordType
-	case "NSEC3", "NSEC3PARAM", "TLSA", "SMIMEA", "HIP", "CDS":
-		record_type = recordType
-	case "CDNSKEY", "OPENPGPKEY", "CSYNC", "ZONEMD", "SVCB", "HTTPS":
-		record_type = recordType
-	case "EUI48", "EUI64", "TKEY", "TSIG", "URI", "CAA", "TA", "DLV":
-		record_type = recordType
-	default:
-		log.Fatalln("Unrecognized DNS Record Type")
 	}
 	return record_type
 }
 
 func resolveGoogle(recordName string, recordType string, c chan []byte) {
-	recordType = valdateRecordType(recordType)
 	body := DOHRequest("https://dns.google/resolve?name=", recordName, recordType)
 	c <- body
 	close(c)
 }
 
 func resolveCloudflare(recordName string, recordType string, c chan []byte) {
-	recordType = valdateRecordType(recordType)
 	body := DOHRequest("https://1.1.1.1/dns-query?name=", recordName, recordType)
 	c <- body
 	close(c)
 }
 
-func resolveDNS(body []byte) (record_name []string, record_type []string, record_ttl []int, record_value []string) {
+func resolveQuad9(recordName string, recordType string, c chan []byte) {
+	body := DOHRequest("https://dns.quad9.net:5053/dns-query?name=", recordName, recordType)
+	c <- body
+	close(c)
+}
+
+func decodeResponse(body []byte) (record_name []string, record_type []string, record_ttl []int, record_value []string) {
 
 	var dnsRecord DNSRecord
 
 	if err := json.Unmarshal(body, &dnsRecord); err != nil {
-		log.Fatalln(err)
+		log.Fatalln("Failed to decode: ", err)
 	}
 
 	if len(dnsRecord.Answer) > 0 {
@@ -200,24 +209,20 @@ func resolveDNS(body []byte) (record_name []string, record_type []string, record
 			}
 			record_type = append(record_type, value)
 		}
-	} else {
-		log.Fatalln("Record Response is empty, please check query")
 	}
 
 	return record_name, record_type, record_ttl, record_value
 }
 
-func main() {
-
-	queryName := flag.String("n", "example.com", "The name of the record you wish to resolve")
-	queryType := flag.String("t", "Not Specified", "DNS Record Type")
-	flag.Parse()
-
+func runQuery(queryName, queryType string, extensive bool) {
+	valdateRecordType(queryType)
+	timer1 := time.NewTimer(4 * time.Second)
 	google := make(chan []byte)
 	cloudflare := make(chan []byte)
-
-	go resolveGoogle(*queryName, *queryType, google)
-	go resolveCloudflare(*queryName, *queryType, cloudflare)
+	quad9 := make(chan []byte)
+	go resolveGoogle(queryName, queryType, google)
+	go resolveCloudflare(queryName, queryType, cloudflare)
+	go resolveQuad9(queryName, queryType, quad9)
 
 	var body []byte
 
@@ -226,12 +231,97 @@ func main() {
 		body = x
 	case y := <-cloudflare:
 		body = y
+	case z := <-quad9:
+		body = z
+	case <-timer1.C:
+		log.Fatalln("Request timed out")
 	}
 
-	names, types, ttls, values := resolveDNS(body)
+	names, types, ttls, values := decodeResponse(body)
+
+	if extensive && len(names) > 0 {
+		fmt.Printf("\n%s:\n\n", queryType)
+	}
 
 	for i := range names {
-		fmt.Println(strings.ToLower(names[i]), strings.ToUpper(types[i]), ttls[i], values[i])
+		fmt.Printf("%s\t%s\t%d\t%s\n",
+			strings.ToLower(names[i]),
+			strings.ToUpper(types[i]),
+			ttls[i],
+			values[i])
 	}
+}
 
+func main() {
+
+	queryName := flag.String("n", "example.com", "The name of the record you wish to resolve")
+	queryType := flag.String("t", "Not Specified", "DNS Record Type")
+	flag.Parse()
+
+	if strings.ToUpper(*queryType) == "EXTENSIVE" {
+
+		dnsRecords := []string{
+			"SOA",
+			"NS",
+			"A",
+			"AAAA",
+			"CNAME",
+			"MX",
+			"SRV",
+			"TXT",
+			"PTR",
+			"HINFO",
+			"RP",
+			"AFSDB",
+			"SIG",
+			"KEY",
+			"LOC",
+			"NAPTR",
+			"KX",
+			"CERT",
+			"DNAME",
+			"APL",
+			"DS",
+			"NSEC3",
+			"NSEC3PARAM",
+			"TLSA",
+			"SMIMEA",
+			"HIP",
+			"CDS",
+			"CDNSKEY",
+			"OPENPGPKEY",
+			"CSYNC",
+			"ZONEMD",
+			"SVCB",
+			"HTTPS",
+			"EUI48",
+			"EUI64",
+			"TKEY",
+			"TSIG",
+			"URI",
+			"CAA",
+			"TA",
+			"DLV",
+		}
+		for _, record := range dnsRecords {
+			runQuery(*queryName, record, true)
+		}
+	} else if strings.ToUpper(*queryType) == "ALL" {
+
+		dnsRecords := []string{
+			"SOA",
+			"NS",
+			"A",
+			"AAAA",
+			"CNAME",
+			"MX",
+			"SRV",
+			"TXT",
+		}
+		for _, record := range dnsRecords {
+			runQuery(*queryName, record, false)
+		}
+	} else {
+		runQuery(*queryName, *queryType, false)
+	}
 }
