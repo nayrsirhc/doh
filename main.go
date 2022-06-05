@@ -11,6 +11,7 @@ import (
 	"time"
 )
 
+// DNSRecord type for storing unmarshaled JSON data
 type DNSRecord struct {
 	Question []struct {
 		Name string `json:"name"`
@@ -24,6 +25,7 @@ type DNSRecord struct {
 	} `json:"Answer"`
 }
 
+// DOHRequest Makes a DNS-over-HTTP request which takes different providers, eg. Google, Cloudflare
 func DOHRequest(provider string, recordName string, recordType string) (body []byte) {
 	var resolveQuery string
 
@@ -54,29 +56,29 @@ func DOHRequest(provider string, recordName string, recordType string) (body []b
 	return body
 }
 
-func valdateRecordType(recordType string) (record_type string) {
+func valdateRecordType(recordType string) (rRecordType string) {
 	if recordType != "Not Specified" {
 		recordType = strings.ToUpper(recordType)
 		switch recordType {
 		case "A", "NS", "CNAME", "SOA", "PTR", "HINFO", "MX":
-			record_type = recordType
+			rRecordType = recordType
 		case "TXT", "RP", "AFSDB", "SIG", "KEY", "AAAA", "LOC":
-			record_type = recordType
+			rRecordType = recordType
 		case "SRV", "NAPTR", "KX", "CERT", "DNAME", "APL", "DS":
-			record_type = recordType
+			rRecordType = recordType
 		case "NSEC3", "NSEC3PARAM", "TLSA", "SMIMEA", "HIP", "CDS":
-			record_type = recordType
+			rRecordType = recordType
 		case "CDNSKEY", "OPENPGPKEY", "CSYNC", "ZONEMD", "SVCB", "HTTPS":
-			record_type = recordType
+			rRecordType = recordType
 		case "EUI48", "EUI64", "TKEY", "TSIG", "URI", "CAA", "TA", "DLV":
-			record_type = recordType
+			rRecordType = recordType
 		default:
 			log.Fatalln("Unrecognized DNS Record Type")
 		}
 	} else {
-		record_type = recordType
+		rRecordType = recordType
 	}
-	return record_type
+	return rRecordType
 }
 
 func resolveGoogle(recordName string, recordType string, c chan []byte) {
@@ -97,7 +99,7 @@ func resolveQuad9(recordName string, recordType string, c chan []byte) {
 	close(c)
 }
 
-func decodeResponse(body []byte) (record_name []string, record_type []string, record_ttl []int, record_value []string) {
+func decodeResponse(body []byte) (recordName []string, recordType []string, recordTTL []int, recordValue []string) {
 
 	var dnsRecord DNSRecord
 
@@ -107,9 +109,9 @@ func decodeResponse(body []byte) (record_name []string, record_type []string, re
 
 	if len(dnsRecord.Answer) > 0 {
 		for _, record := range dnsRecord.Answer {
-			record_name = append(record_name, record.Name)
-			record_ttl = append(record_ttl, record.TTL)
-			record_value = append(record_value, record.Data)
+			recordName = append(recordName, record.Name)
+			recordTTL = append(recordTTL, record.TTL)
+			recordValue = append(recordValue, record.Data)
 			var value string
 			switch record.Type {
 			case 1:
@@ -207,11 +209,11 @@ func decodeResponse(body []byte) (record_name []string, record_type []string, re
 			case 32769:
 				value = "DLV"
 			}
-			record_type = append(record_type, value)
+			recordType = append(recordType, value)
 		}
 	}
 
-	return record_name, record_type, record_ttl, record_value
+	return recordName, recordType, recordTTL, recordValue
 }
 
 func runQuery(queryName, queryType string, extensive bool) {
