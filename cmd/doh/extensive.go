@@ -8,7 +8,7 @@ import (
 var extensiveCmd = &cobra.Command{
     Use:   "extensive",
     Aliases: []string{"ext"},
-    Short:  "Reverses a string",
+    Short:  "Resolves an extensive list of records for a domain",
     Args:  cobra.ExactArgs(1),
     Run: func(cmd *cobra.Command, args []string) {
         queryName := args[0]

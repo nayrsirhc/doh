@@ -7,11 +7,12 @@ import (
 
 var aCmd = &cobra.Command{
     Use:   "a",
-    Short:  "Reverses a string",
+    Aliases: []string{"A"},
+    Short:  "Resolves A reocrds for domain",
     Args:  cobra.ExactArgs(1),
     Run: func(cmd *cobra.Command, args []string) {
         queryName := args[0]
-        doh.RunQuery(queryName,"A",false)
+        doh.RunQuery(queryName,"a",false)
     },
 }
 
