@@ -1,8 +1,8 @@
-package main
+package doh
 
 import (
 	"encoding/json"
-	"flag"
+	// "flag"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -216,7 +216,7 @@ func decodeResponse(body []byte) (recordName []string, recordType []string, reco
 	return recordName, recordType, recordTTL, recordValue
 }
 
-func runQuery(queryName, queryType string, extensive bool) {
+func RunQuery(queryName, queryType string, extensive bool) {
 	valdateRecordType(queryType)
 	timer1 := time.NewTimer(4 * time.Second)
 	google := make(chan []byte)
@@ -254,13 +254,15 @@ func runQuery(queryName, queryType string, extensive bool) {
 	}
 }
 
-func main() {
+// func main() {
 
-	queryName := flag.String("n", "example.com", "The name of the record you wish to resolve")
-	queryType := flag.String("t", "Not Specified", "DNS Record Type")
-	flag.Parse()
+// 	queryName := flag.String("n", "example.com", "The name of the record you wish to resolve")
+// 	queryType := flag.String("t", "Not Specified", "DNS Record Type")
+// 	flag.Parse()
 
-	if strings.ToUpper(*queryType) == "EXTENSIVE" {
+// 	if strings.ToUpper(*queryType) == "EXTENSIVE" {
+
+func QueryExtensive(queryName string) {
 
 		dnsRecords := []string{
 			"SOA",
@@ -306,9 +308,11 @@ func main() {
 			"DLV",
 		}
 		for _, record := range dnsRecords {
-			runQuery(*queryName, record, true)
+			RunQuery(queryName, record, true)
 		}
-	} else if strings.ToUpper(*queryType) == "ALL" {
+}
+	// } else if strings.ToUpper(*queryType) == "ALL" {
+func QueryAll(queryName string) {
 
 		dnsRecords := []string{
 			"SOA",
@@ -321,9 +325,10 @@ func main() {
 			"TXT",
 		}
 		for _, record := range dnsRecords {
-			runQuery(*queryName, record, false)
+			RunQuery(queryName, record, false)
 		}
-	} else {
-		runQuery(*queryName, *queryType, false)
-	}
 }
+	// } else {
+// 		RunQuery(*queryName, *queryType, false)
+// 	}
+// }
