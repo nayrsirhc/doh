@@ -2,7 +2,6 @@ package doh
 
 import (
 	"encoding/json"
-	// "flag"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -254,14 +253,6 @@ func RunQuery(queryName, queryType string, extensive bool) {
 	}
 }
 
-// func main() {
-
-// 	queryName := flag.String("n", "example.com", "The name of the record you wish to resolve")
-// 	queryType := flag.String("t", "Not Specified", "DNS Record Type")
-// 	flag.Parse()
-
-// 	if strings.ToUpper(*queryType) == "EXTENSIVE" {
-
 func QueryExtensive(queryName string) {
 
 		dnsRecords := []string{
@@ -311,7 +302,7 @@ func QueryExtensive(queryName string) {
 			RunQuery(queryName, record, true)
 		}
 }
-	// } else if strings.ToUpper(*queryType) == "ALL" {
+
 func QueryAll(queryName string) {
 
 		dnsRecords := []string{
@@ -328,7 +319,3 @@ func QueryAll(queryName string) {
 			RunQuery(queryName, record, false)
 		}
 }
-	// } else {
-// 		RunQuery(*queryName, *queryType, false)
-// 	}
-// }
