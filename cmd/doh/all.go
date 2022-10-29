@@ -5,17 +5,16 @@ import (
     "github.com/spf13/cobra"
 )
 
-var extensiveCmd = &cobra.Command{
-    Use:   "extensive",
-    Aliases: []string{"ext"},
+var allCmd = &cobra.Command{
+    Use:   "all",
     Short:  "Reverses a string",
     Args:  cobra.ExactArgs(1),
     Run: func(cmd *cobra.Command, args []string) {
         queryName := args[0]
-        doh.QueryExtensive(queryName)
+        doh.QueryAll(queryName)
     },
 }
 
 func init() {
-    rootCmd.AddCommand(extensiveCmd)
+    rootCmd.AddCommand(allCmd)
 }
