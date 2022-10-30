@@ -8,7 +8,7 @@ import (
 var aCmd = &cobra.Command{
     Use:   "a",
     Aliases: []string{"A"},
-    Short:  "Resolves A reocrds for domain",
+    Short:  "Resolves A records for domain",
     Args:  cobra.ExactArgs(1),
     Run: func(cmd *cobra.Command, args []string) {
         queryName := args[0]
