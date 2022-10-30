@@ -8,7 +8,7 @@ import (
 var version = "0.0.1"
 
 var rootCmd = &cobra.Command{
-    Use:  "doh {command [domain]",
+    Use:  "doh [command] [domain]",
     Short: "doh - a simple CLI to resolve DOH",
     Long: `DOH can be used to resolve DNS over HTTPS
 
