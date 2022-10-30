@@ -5,9 +5,9 @@ import (
     "github.com/spf13/cobra"
 )
 
-var getCmd = &cobra.Command{
-    Use:   "get",
-    Aliases: []string{"GET", "resolve", "any"},
+var anyCmd = &cobra.Command{
+    Use:   "any [domain]",
+    Aliases: []string{"ANY", "resolve", "get"},
     Short:  "Resolve whatever record type you find for this domain",
     Args:  cobra.ExactArgs(1),
     Run: func(cmd *cobra.Command, args []string) {
@@ -17,5 +17,5 @@ var getCmd = &cobra.Command{
 }
 
 func init() {
-    rootCmd.AddCommand(getCmd)
+    rootCmd.AddCommand(anyCmd)
 }

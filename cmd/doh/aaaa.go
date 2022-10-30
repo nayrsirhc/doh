@@ -6,7 +6,7 @@ import (
 )
 
 var aaaaCmd = &cobra.Command{
-    Use:   "aaaa",
+    Use:   "aaaa [domain]",
     Aliases: []string{"AAAA"},
     Short:  "Resolves AAAA records for domain",
     Args:  cobra.ExactArgs(1),

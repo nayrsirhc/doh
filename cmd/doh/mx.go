@@ -6,7 +6,7 @@ import (
 )
 
 var mxCmd = &cobra.Command{
-    Use:   "mx",
+    Use:   "mx [domain]",
     Aliases: []string{"MX", "mail", "MAIL"},
     Short:  "Resolves MX/MAIL records for domain",
     Args:  cobra.ExactArgs(1),

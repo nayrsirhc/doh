@@ -6,7 +6,7 @@ import (
 )
 
 var soaCmd = &cobra.Command{
-    Use:   "soa",
+    Use:   "soa [domain]",
     Aliases: []string{"SOA"},
     Short:  "Resolves SOA for domain",
     Args:  cobra.ExactArgs(1),

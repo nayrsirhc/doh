@@ -6,7 +6,7 @@ import (
 )
 
 var txtCmd = &cobra.Command{
-    Use:   "txt",
+    Use:   "txt [domain]",
     Aliases: []string{"TXT"},
     Short:  "Resolves TXT records for domain",
     Args:  cobra.ExactArgs(1),

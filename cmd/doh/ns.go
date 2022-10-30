@@ -6,7 +6,7 @@ import (
 )
 
 var nsCmd = &cobra.Command{
-    Use:   "ns",
+    Use:   "ns [domain]",
     Aliases: []string{"NS"},
     Short:  "Resolves NS records for domain",
     Args:  cobra.ExactArgs(1),

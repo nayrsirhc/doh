@@ -6,7 +6,7 @@ import (
 )
 
 var extensiveCmd = &cobra.Command{
-    Use:   "extensive",
+    Use:   "extensive [domain]",
     Aliases: []string{"ext"},
     Short:  "Resolves an extensive list of records for a domain",
     Args:  cobra.ExactArgs(1),

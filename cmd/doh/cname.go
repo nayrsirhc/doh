@@ -6,7 +6,7 @@ import (
 )
 
 var cnameCmd = &cobra.Command{
-    Use:   "cname",
+    Use:   "cname [domain]",
     Aliases: []string{"CNAME"},
     Short:  "Resolves CNAME records for domain",
     Args:  cobra.ExactArgs(1),

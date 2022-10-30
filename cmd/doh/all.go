@@ -6,7 +6,7 @@ import (
 )
 
 var allCmd = &cobra.Command{
-    Use:   "all",
+    Use:   "all [domain]",
     Short:  "Resolves all records for a domain",
     Args:  cobra.ExactArgs(1),
     Run: func(cmd *cobra.Command, args []string) {
