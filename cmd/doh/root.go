@@ -9,7 +9,7 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-    Use:  "doh",
+    Use:  "doh [dns reocrd type] [domain]",
     Short: "doh - a simple CLI to transform and inspect strings",
     Long: `doh is a super fancy CLI (kidding)
 
