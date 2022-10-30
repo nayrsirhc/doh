@@ -56,7 +56,7 @@ jobs:
             go-version: '>=1.17.0'
 
       - name: Run testing
-        run: go test -v
+        run: go test -v ./pkg/doh
 
   build:
     name: build
@@ -76,11 +76,9 @@ jobs:
       - name: Run build and Test Command
         run: |
           go build .
-          ./edig
-          ./edig -t A
-          ./edig -n example.com
-          ./edig -n EXaMpLe.com -t a
-          ./edig -t all
-          ./edig -t extensive
-          ./edig -n example.com -t all
-          ./edig -n example.com -t extensive
+          ./doh
+          ./doh a example.com
+          ./doh get example.com
+          ./doh a EXaMpLe.com
+          ./doh all example.com
+          ./doh extensive example.com
