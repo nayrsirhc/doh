@@ -10,7 +10,7 @@ on:
     branches: 
     - main
     - develop
-    - feature/sonarcube
+    - feature/sonarcloud
 
   workflow_dispatch:
 
