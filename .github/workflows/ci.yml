@@ -10,6 +10,7 @@ on:
     branches: 
     - main
     - develop
+    - feature/sonarcube
 
   workflow_dispatch:
 
@@ -39,6 +40,9 @@ jobs:
         run: |
             go vet
             golint -set_exit_status
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@v1.7
 
   test:
     name: test
