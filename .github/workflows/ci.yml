@@ -6,11 +6,11 @@ on:
     branches:
     - main
     - develop
+    - feature/sonarcloud
   pull_request:
     branches: 
     - main
     - develop
-    - feature/sonarcloud
 
   workflow_dispatch:
 
