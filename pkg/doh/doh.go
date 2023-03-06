@@ -24,8 +24,14 @@ type DNSRecord struct {
 	} `json:"Answer"`
 }
 
+func LogError(err error) {
+	if err != nil {
+		time.Sleep(1)
+		log.Fatalln(err)
+	}
+}
 // DOHRequest Makes a DNS-over-HTTP request which takes different providers, eg. Google, Cloudflare
-func DOHRequest(provider string, recordName string, recordType string) (body []byte) {
+func DOHRequest(provider string, recordName string, recordType string) (body []byte, err error) {
 	var resolveQuery string
 
 	if recordType == "Not Specified" {
@@ -35,24 +41,14 @@ func DOHRequest(provider string, recordName string, recordType string) (body []b
 	}
 
 	req, err := http.NewRequest("GET", resolveQuery, nil)
-	if err != nil {
-		log.Fatalln(err)
-	}
 	req.Header.Set("accept", "application/dns-json")
 	//We Read the response body on the line below.
 	client := &http.Client{}
 	resp, err := client.Do(req)
 
-	if err != nil {
-		log.Fatalln(err)
-	}
-
 	body, err = ioutil.ReadAll(resp.Body)
-	if err != nil {
-		log.Fatalln(err)
-	}
 
-	return body
+	return body, err
 }
 
 func valdateRecordType(recordType string) (rRecordType string) {
@@ -81,19 +77,28 @@ func valdateRecordType(recordType string) (rRecordType string) {
 }
 
 func resolveGoogle(recordName string, recordType string, c chan []byte) {
-	body := DOHRequest("https://dns.google/resolve?name=", recordName, recordType)
+	body,err := DOHRequest("https://dns.google/resolve?name=", recordName, recordType)
+	if err != nil {
+		LogError(err)
+	}
 	c <- body
 	close(c)
 }
 
 func resolveCloudflare(recordName string, recordType string, c chan []byte) {
-	body := DOHRequest("https://1.1.1.1/dns-query?name=", recordName, recordType)
+	body, err := DOHRequest("https://1.1.1.1/dns-query?name=", recordName, recordType)
+	if err != nil {
+		LogError(err)
+	}
 	c <- body
 	close(c)
 }
 
 func resolveQuad9(recordName string, recordType string, c chan []byte) {
-	body := DOHRequest("https://dns.quad9.net:5053/dns-query?name=", recordName, recordType)
+	body, err := DOHRequest("https://dns.quad9.net:5053/dns-query?name=", recordName, recordType)
+	if err != nil {
+		LogError(err)
+	}
 	c <- body
 	close(c)
 }
