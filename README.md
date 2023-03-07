@@ -1,7 +1,7 @@
 # doh
 
 ![golang-doh](https://img.shields.io/static/v1?label=golang&message=doh&color=blue&style=for-the-badge&logo=go)
-![build-status](https://img.shields.io/github/workflow/status/nayrsirhc/doh/CI?style=for-the-badge)
+![build-status](https://img.shields.io/github/actions/workflow/status/nayrsirhc/doh/ci.yml?style=for-the-badge)
 
 The purpose of this command and project in general, is to solve the problem of being terminal first, working behind a corporate firewall can be challenging, you might want to see what a DNS record resolves to externally, but port 53 is blocked for security reasons, DNS over HTTPS obviously uses port 443 to do so hence the birth of this command.
 
