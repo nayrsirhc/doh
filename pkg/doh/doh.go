@@ -3,14 +3,16 @@ package doh
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"strings"
 	"time"
+    "errors"
 )
 
 // DNSRecord type for storing unmarshaled JSON data
+
 type DNSRecord struct {
 	Question []struct {
 		Name string `json:"name"`
@@ -51,7 +53,7 @@ func DOHRequest(provider string, recordName string, recordType string) (body []b
 	if err != nil {
 		LogError(err)
 	}
-	body, err = ioutil.ReadAll(resp.Body)
+	body, err = io.ReadAll(resp.Body)
 	if err != nil {
 		LogError(err)
 	}
@@ -102,12 +104,14 @@ func resolveQuad9(recordName string, recordType string, c chan []byte) {
 	close(c)
 }
 
-func decodeResponse(body []byte) (recordName []string, recordType []string, recordTTL []int, recordValue []string) {
+func decodeResponse(body []byte) (recordName []string, recordType []string, recordTTL []int, recordValue []string, err error) {
 
 	var dnsRecord DNSRecord
 
 	if err := json.Unmarshal(body, &dnsRecord); err != nil {
-		log.Fatalln("Failed to decode: ", err)
+        newErr := fmt.Sprintf("Failed to decode: %v\n", err)
+        ouch := errors.New(newErr)
+        return nil, nil, nil, nil, ouch
 	}
 
 	if len(dnsRecord.Answer) > 0 {
@@ -216,10 +220,10 @@ func decodeResponse(body []byte) (recordName []string, recordType []string, reco
 		}
 	}
 
-	return recordName, recordType, recordTTL, recordValue
+	return recordName, recordType, recordTTL, recordValue, nil
 }
 
-func RunQuery(queryName, queryType string, extensive bool) {
+func RunQuery(queryName, queryType string, extensive bool, json bool) {
 	valdateRecordType(queryType)
 	timer1 := time.NewTimer(4 * time.Second)
 	google := make(chan []byte)
@@ -242,19 +246,20 @@ func RunQuery(queryName, queryType string, extensive bool) {
 		log.Fatalln("Request timed out")
 	}
 
-	names, types, ttls, values := decodeResponse(body)
-
-	if extensive && len(names) > 0 {
+	names, types, ttls, values, err := decodeResponse(body)
+    if err != nil || json {
+        fmt.Println(string(body))
+    } else if extensive && len(names) > 0 {
 		fmt.Printf("\n%s:\n\n", queryType)
-	}
-
-	for i := range names {
-		fmt.Printf("%s\t%s\t%d\t%s\n",
-			strings.ToLower(names[i]),
-			strings.ToUpper(types[i]),
-			ttls[i],
-			values[i])
-	}
+    } else {
+        for i := range names {
+            fmt.Printf("%s\t%s\t%d\t%s\n",
+            strings.ToLower(names[i]),
+            strings.ToUpper(types[i]),
+            ttls[i],
+            values[i])
+        }
+    }
 }
 
 func QueryExtensive(queryName string) {
@@ -303,7 +308,7 @@ func QueryExtensive(queryName string) {
 			"DLV",
 		}
 		for _, record := range dnsRecords {
-			RunQuery(queryName, record, true)
+			RunQuery(queryName, record, true, false)
 		}
 }
 
@@ -320,6 +325,6 @@ func QueryAll(queryName string) {
 			"TXT",
 		}
 		for _, record := range dnsRecords {
-			RunQuery(queryName, record, false)
+			RunQuery(queryName, record, false, false)
 		}
 }

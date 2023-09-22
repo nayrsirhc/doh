@@ -93,9 +93,9 @@ func TestDecodeResponse(t *testing.T) {
         53,44,34,84,84,76,34,58,56,54,51,53,49,44,34,100,97,116,97,34,58,34,48,32,46,34,125,93,125,
     }
 
-    names, types, ttls, values := decodeResponse(data)
+    names, types, ttls, values, err := decodeResponse(data)
 
-    if len(names) > 0 {
+    if len(names) > 0 && err == nil {
         t.Log("Decoded Data Successfully!")
         t.Log("Decoded Values:",names,types,ttls,values)
     } else {
