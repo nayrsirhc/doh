@@ -13,7 +13,7 @@ var cnameCmd = &cobra.Command{
     Run: func(cmd *cobra.Command, args []string) {
         queryName := args[0]
         json, _ := cmd.Flags().GetBool("json")
-        doh.RunQuery(queryName,"Not Specified",false, json)
+        doh.RunQuery(queryName,"cname",false, json)
     },
 }
 
