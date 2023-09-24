@@ -94,7 +94,7 @@ func valdateRecordType(recordType string) (rRecordType string) {
 func resolveGoogle(recordName string, recordType string, c chan []byte) {
     body, err:= DOHRequest("https://dns.google/resolve?name=", recordName, recordType)
     if err != nil {
-        time.Sleep(1 * time.Second)
+        time.Sleep(3 * time.Second)
         log.Fatalln(err)
     }
     c <- body
@@ -104,7 +104,7 @@ func resolveGoogle(recordName string, recordType string, c chan []byte) {
 func resolveCloudflare(recordName string, recordType string, c chan []byte) {
     body, err := DOHRequest("https://1.1.1.1/dns-query?name=", recordName, recordType)
     if err != nil {
-        time.Sleep(1 * time.Second)
+        time.Sleep(3 * time.Second)
         log.Fatalln(err)
     }
     c <- body
@@ -114,7 +114,7 @@ func resolveCloudflare(recordName string, recordType string, c chan []byte) {
 func resolveQuad9(recordName string, recordType string, c chan []byte) {
     body, err := DOHRequest("https://dns.quad9.net:5053/dns-query?name=", recordName, recordType)
     if err != nil {
-        time.Sleep(1 * time.Second)
+        time.Sleep(3 * time.Second)
         log.Fatalln(err)
     }
     c <- body
@@ -266,9 +266,10 @@ func RunQuery(queryName, queryType string, extensive bool, json bool) {
     names, types, ttls, values, err := decodeResponse(body)
     if err != nil || json {
         fmt.Println(string(body))
-    } else if extensive && len(names) > 0 {
-        fmt.Printf("\n%s:\n\n", queryType)
     } else {
+        if extensive && len(names) > 0 {
+            fmt.Printf("\n%s:\n\n", queryType)
+        }
         for i := range names {
             fmt.Printf("%s\t%s\t%d\t%s\n",
             strings.ToLower(names[i]),
