@@ -1,63 +1,10 @@
 package doh
 
 import (
+	"fmt"
 	"testing"
     "time"
 )
-
-func TestValidateRecord(t *testing.T) {
-    dnsRecords := []string{
-        "SOA",
-        "NS",
-        "A",
-        "AAAA",
-        "CNAME",
-        "MX",
-        "SRV",
-        "TXT",
-        "PTR",
-        "HINFO",
-        "RP",
-        "AFSDB",
-        "SIG",
-        "KEY",
-        "LOC",
-        "NAPTR",
-        "KX",
-        "CERT",
-        "DNAME",
-        "APL",
-        "DS",
-        "NSEC3",
-        "NSEC3PARAM",
-        "TLSA",
-        "SMIMEA",
-        "HIP",
-        "CDS",
-        "CDNSKEY",
-        "OPENPGPKEY",
-        "CSYNC",
-        "ZONEMD",
-        "SVCB",
-        "HTTPS",
-        "EUI48",
-        "EUI64",
-        "TKEY",
-        "TSIG",
-        "URI",
-        "CAA",
-        "TA",
-        "DLV",
-    }
-    for _, record := range dnsRecords {
-        recordType := valdateRecordType(record)
-        t.Log("Validating Record Type", record)
-        if recordType != record {
-            t.Errorf("Failed to validate record string")
-        }
-        t.Log("Success")
-    }
-}
 
 func TestDOHRequest(t *testing.T) {
 
@@ -74,7 +21,39 @@ func TestDOHRequest(t *testing.T) {
 
     for _,record := range dnsRecords {
         t.Log("Resolving", record, "Record")
-        body := DOHRequest("https://dns.google/resolve?name=", "exmaple.com", record)
+        timer1 := time.NewTimer(4 * time.Second)
+        google := make(chan []byte)
+        cloudflare := make(chan []byte)
+        quad9 := make(chan []byte)
+        providers := map[chan []byte]string{
+            cloudflare: "https://1.1.1.1/dns-query?name=",
+            google: "https://dns.google/resolve?name=",
+            quad9: "https://dns.quad9.net:5053/dns-query?name=",
+        }
+        for key, value := range providers {
+            go func(key chan []byte, value string) {
+                defer close(key)
+                body, err:= DOHRequest(value, "example.com", "a")
+                if err != nil {
+                    time.Sleep(3 * time.Second)
+                    t.Errorf(fmt.Sprintf("Failed to decode: %v\n", err))
+                }
+                key <- body
+            }(key, value)
+        }
+
+        var body []byte
+
+        select {
+        case x := <-google:
+            body = x
+        case y := <-cloudflare:
+            body = y
+        case z := <-quad9:
+            body = z
+        case <-timer1.C:
+            t.Errorf("Request timed out")
+        }
         t.Log("Received", len(body), "bytes")
         if body == nil {
             t.Errorf("Empty reponse")
@@ -92,52 +71,14 @@ func TestDecodeResponse(t *testing.T) {
         101,34,58,34,101,120,97,109,112,108,101,46,99,111,109,34,44,34,116,121,112,101,34,58,49,
         53,44,34,84,84,76,34,58,56,54,51,53,49,44,34,100,97,116,97,34,58,34,48,32,46,34,125,93,125,
     }
+    dnsQuery := DNSQuery{}
+    dnsRecords := []DNSRecord{}
+    err := decodeResponse(data, &dnsQuery, &dnsRecords)
 
-    names, types, ttls, values, err := decodeResponse(data)
-
-    if len(names) > 0 && err == nil {
+    if len(dnsRecords) > 0 && err == nil {
         t.Log("Decoded Data Successfully!")
-        t.Log("Decoded Values:",names,types,ttls,values)
+        t.Log("Decoded Values:", dnsRecords)
     } else {
         t.Errorf("Unable to decode response")
-    }
-}
-
-func TestResolveGoogle(t *testing.T) {
-
-    timer1 := time.NewTimer(1 * time.Second)
-    google := make(chan []byte)
-    go resolveGoogle("google.co.za", "a", google)
-    select {
-    case x := <-google:
-        t.Log("Received", len(x), "bytes")
-    case <-timer1.C:
-        t.Errorf("Response took longer than a second")
-    }
-}
-
-func TestResolveCloudflare(t *testing.T) {
-
-    timer1 := time.NewTimer(1 * time.Second)
-    cloudflare := make(chan []byte)
-    go resolveCloudflare("cloudflare.net", "a", cloudflare)
-    select {
-    case x := <-cloudflare:
-        t.Log("Received", len(x), "bytes")
-    case <-timer1.C:
-        t.Errorf("Response took longer than a second")
-    }
-}
-
-func TestResolveQuad9(t *testing.T) {
-
-    timer1 := time.NewTimer(1 * time.Second)
-    quad9 := make(chan []byte)
-    go resolveQuad9("quad9.net", "a", quad9)
-    select {
-    case x := <-quad9:
-        t.Log("Received", len(x), "bytes")
-    case <-timer1.C:
-        t.Errorf("Response took longer than a second")
     }
 }

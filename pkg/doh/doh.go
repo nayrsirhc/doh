@@ -12,18 +12,27 @@ import (
 )
 
 // DNSRecord type for storing unmarshaled JSON data
+type Question []struct {
+    Name string `json:"name"`
+    Type int    `json:"type"`
+}
+type Answer []struct {
+    Name string `json:"name"`
+    Type int    `json:"type"`
+    TTL  int    `json:"TTL"`
+    Data string `json:"data"`
+}
+
+type DNSQuery struct {
+    Question `json:"Question"`
+    Answer    `json:"Answer"`
+}
 
 type DNSRecord struct {
-    Question []struct {
-        Name string `json:"name"`
-        Type int    `json:"type"`
-    } `json:"Question"`
-    Answer []struct {
-        Name string `json:"name"`
-        Type int    `json:"type"`
-        TTL  int    `json:"TTL"`
-        Data string `json:"data"`
-    } `json:"Answer"`
+    Name string `json:"name"`
+    Type string `json:"type"`
+    TTL  int    `json:"TTL"`
+    Data string `json:"data"`
 }
 
 // DOHRequest Makes a DNS-over-HTTP request which takes different providers, eg. Google, Cloudflare
@@ -66,76 +75,16 @@ func DOHRequest(provider string, recordName string, recordType string) (body []b
     return body, nil
 }
 
-func valdateRecordType(recordType string) (rRecordType string) {
-    if recordType != "Not Specified" {
-        recordType = strings.ToUpper(recordType)
-        switch recordType {
-        case "A", "NS", "CNAME", "SOA", "PTR", "HINFO", "MX":
-            rRecordType = recordType
-        case "TXT", "RP", "AFSDB", "SIG", "KEY", "AAAA", "LOC":
-            rRecordType = recordType
-        case "SRV", "NAPTR", "KX", "CERT", "DNAME", "APL", "DS":
-            rRecordType = recordType
-        case "NSEC3", "NSEC3PARAM", "TLSA", "SMIMEA", "HIP", "CDS":
-            rRecordType = recordType
-        case "CDNSKEY", "OPENPGPKEY", "CSYNC", "ZONEMD", "SVCB", "HTTPS":
-            rRecordType = recordType
-        case "EUI48", "EUI64", "TKEY", "TSIG", "URI", "CAA", "TA", "DLV":
-            rRecordType = recordType
-        default:
-            log.Fatalln("Unrecognized DNS Record Type")
-        }
-    } else {
-        rRecordType = recordType
-    }
-    return rRecordType
-}
+func decodeResponse(body []byte, dnsQuery *DNSQuery, dnsRecords *[]DNSRecord) (err error) {
 
-func resolveGoogle(recordName string, recordType string, c chan []byte) {
-    body, err:= DOHRequest("https://dns.google/resolve?name=", recordName, recordType)
-    if err != nil {
-        time.Sleep(3 * time.Second)
-        log.Fatalln(err)
-    }
-    c <- body
-    close(c)
-}
-
-func resolveCloudflare(recordName string, recordType string, c chan []byte) {
-    body, err := DOHRequest("https://1.1.1.1/dns-query?name=", recordName, recordType)
-    if err != nil {
-        time.Sleep(3 * time.Second)
-        log.Fatalln(err)
-    }
-    c <- body
-    close(c)
-}
-
-func resolveQuad9(recordName string, recordType string, c chan []byte) {
-    body, err := DOHRequest("https://dns.quad9.net:5053/dns-query?name=", recordName, recordType)
-    if err != nil {
-        time.Sleep(3 * time.Second)
-        log.Fatalln(err)
-    }
-    c <- body
-    close(c)
-}
-
-func decodeResponse(body []byte) (recordName []string, recordType []string, recordTTL []int, recordValue []string, err error) {
-
-    var dnsRecord DNSRecord
-
-    if err := json.Unmarshal(body, &dnsRecord); err != nil {
+    if err := json.Unmarshal(body, &dnsQuery); err != nil {
         newErr := fmt.Sprintf("Failed to decode: %v\n", err)
         ouch := errors.New(newErr)
-        return nil, nil, nil, nil, ouch
+        return ouch
     }
 
-    if len(dnsRecord.Answer) > 0 {
-        for _, record := range dnsRecord.Answer {
-            recordName = append(recordName, record.Name)
-            recordTTL = append(recordTTL, record.TTL)
-            recordValue = append(recordValue, record.Data)
+    if len(dnsQuery.Answer) > 0 {
+        for _, record := range dnsQuery.Answer {
             var value string
             switch record.Type {
             case 1:
@@ -233,22 +182,38 @@ func decodeResponse(body []byte) (recordName []string, recordType []string, reco
             case 32769:
                 value = "DLV"
             }
-            recordType = append(recordType, value)
+            *dnsRecords = append(*dnsRecords, DNSRecord{
+                record.Name,
+                value,
+                record.TTL,
+                record.Data,
+            })
         }
     }
-
-    return recordName, recordType, recordTTL, recordValue, nil
+    return nil
 }
 
 func RunQuery(queryName, queryType string, extensive bool, json bool) {
-    valdateRecordType(queryType)
     timer1 := time.NewTimer(4 * time.Second)
     google := make(chan []byte)
     cloudflare := make(chan []byte)
     quad9 := make(chan []byte)
-    go resolveGoogle(queryName, queryType, google)
-    go resolveCloudflare(queryName, queryType, cloudflare)
-    go resolveQuad9(queryName, queryType, quad9)
+    providers := map[chan []byte]string{
+        cloudflare: "https://1.1.1.1/dns-query?name=",
+        google: "https://dns.google/resolve?name=",
+        quad9: "https://dns.quad9.net:5053/dns-query?name=",
+    }
+    for key, value := range providers {
+        go func(key chan []byte, value string) {
+            defer close(key)
+            body, err:= DOHRequest(value, queryName, queryType)
+            if err != nil {
+                time.Sleep(3 * time.Second)
+                log.Fatalln(err)
+            }
+            key <- body
+        }(key, value)
+    }
 
     var body []byte
 
@@ -262,20 +227,21 @@ func RunQuery(queryName, queryType string, extensive bool, json bool) {
     case <-timer1.C:
         log.Fatalln("Request timed out")
     }
-
-    names, types, ttls, values, err := decodeResponse(body)
+    dnsQuery := DNSQuery{}
+    dnsRecords := []DNSRecord{}
+    err := decodeResponse(body, &dnsQuery, &dnsRecords)
     if err != nil || json {
         fmt.Println(string(body))
     } else {
-        if extensive && len(names) > 0 {
+        if extensive && len(dnsRecords) > 0 {
             fmt.Printf("\n%s:\n\n", queryType)
         }
-        for i := range names {
+        for i := range dnsRecords {
             fmt.Printf("%s\t%s\t%d\t%s\n",
-            strings.ToLower(names[i]),
-            strings.ToUpper(types[i]),
-            ttls[i],
-            values[i])
+            strings.ToLower(dnsRecords[i].Name),
+            strings.ToUpper(dnsRecords[i].Type),
+            dnsRecords[i].TTL,
+            dnsRecords[i].Data)
         }
     }
 }
