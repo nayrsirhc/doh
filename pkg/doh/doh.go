@@ -36,6 +36,61 @@ type DNSRecord struct {
     Data string `json:"data"`
 }
 
+func mapRecords(recordId int) (recordName string) {
+    recordMap := map[int]string{
+        1: "A",
+        2: "NS",
+        5: "CNAME",
+        6: "SOA",
+        12: "PTR",
+        13: "HINFO",
+        15: "MX",
+        16: "TXT",
+        17: "RP",
+        18: "AFSDB",
+        24: "SIG",
+        25: "KEY",
+        28: "AAAA",
+        29: "LOC",
+        33: "SRV",
+        35: "NAPTR",
+        36: "KX",
+        37: "CERT",
+        39: "DNAME",
+        42: "APL",
+        43: "DS",
+        44: "SSHFP",
+        45: "IPSECKEY",
+        46: "RRSIG",
+        47: "NSEC",
+        48: "DNSKEY",
+        49: "DHCID",
+        50: "NSEC3",
+        51: "NSEC3PARAM",
+        52: "TLSA",
+        53: "SMIMEA",
+        55: "HIP",
+        59: "CDS",
+        60: "CDNSKEY",
+        61: "OPENPGPKEY",
+        62: "CSYNC",
+        63: "ZONEMD",
+        64: "SVCB",
+        65: "HTTPS",
+        108: "EUI48",
+        109: "EUI64",
+        249: "TKEY",
+        250: "TSIG",
+        256: "URI",
+        257: "CAA",
+        258: "AVC",
+        32768: "TA",
+        32769: "DLV",
+    }
+
+    return recordMap[recordId]
+}
+
 // DOHRequest Makes a DNS-over-HTTP request which takes different providers, eg. Google, Cloudflare
 func DOHRequest(provider string, recordName string, recordType string) (body []byte, ouch error) {
     var resolveQuery string
@@ -86,106 +141,10 @@ func decodeResponse(body []byte, dnsQuery *DNSQuery, dnsRecords *[]DNSRecord) (e
 
     if len(dnsQuery.Answer) > 0 {
         for _, record := range dnsQuery.Answer {
-            var value string
-            switch record.Type {
-            case 1:
-                value = "A"
-            case 2:
-                value = "NS"
-            case 5:
-                value = "CNAME"
-            case 6:
-                value = "SOA"
-            case 12:
-                value = "PTR"
-            case 13:
-                value = "HINFO"
-            case 15:
-                value = "MX"
-            case 16:
-                value = "TXT"
-            case 17:
-                value = "RP"
-            case 18:
-                value = "AFSDB"
-            case 24:
-                value = "SIG"
-            case 25:
-                value = "KEY"
-            case 28:
-                value = "AAAA"
-            case 29:
-                value = "LOC"
-            case 33:
-                value = "SRV"
-            case 35:
-                value = "NAPTR"
-            case 36:
-                value = "KX"
-            case 37:
-                value = "CERT"
-            case 39:
-                value = "DNAME"
-            case 42:
-                value = "APL"
-            case 43:
-                value = "DS"
-            case 44:
-                value = "SSHFP"
-            case 45:
-                value = "IPSECKEY"
-            case 46:
-                value = "RRSIG"
-            case 47:
-                value = "NSEC"
-            case 48:
-                value = "DNSKEY"
-            case 49:
-                value = "DHCID"
-            case 50:
-                value = "NSEC3"
-            case 51:
-                value = "NSEC3PARAM"
-            case 52:
-                value = "TLSA"
-            case 53:
-                value = "SMIMEA"
-            case 55:
-                value = "HIP"
-            case 59:
-                value = "CDS"
-            case 60:
-                value = "CDNSKEY"
-            case 61:
-                value = "OPENPGPKEY"
-            case 62:
-                value = "CSYNC"
-            case 63:
-                value = "ZONEMD"
-            case 64:
-                value = "SVCB"
-            case 65:
-                value = "HTTPS"
-            case 108:
-                value = "EUI48"
-            case 109:
-                value = "EUI64"
-            case 249:
-                value = "TKEY"
-            case 250:
-                value = "TSIG"
-            case 256:
-                value = "URI"
-            case 257:
-                value = "CAA"
-            case 32768:
-                value = "TA"
-            case 32769:
-                value = "DLV"
-            }
+            recordType := mapRecords(record.Type)
             *dnsRecords = append(*dnsRecords, DNSRecord{
                 record.Name,
-                value,
+                recordType,
                 record.TTL,
                 record.Data,
             })
