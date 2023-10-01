@@ -1,63 +1,13 @@
 package doh
 
 import (
-	"testing"
+    // "errors"
+    "testing"
     "time"
-)
+    "fmt"
 
-func TestValidateRecord(t *testing.T) {
-    dnsRecords := []string{
-        "SOA",
-        "NS",
-        "A",
-        "AAAA",
-        "CNAME",
-        "MX",
-        "SRV",
-        "TXT",
-        "PTR",
-        "HINFO",
-        "RP",
-        "AFSDB",
-        "SIG",
-        "KEY",
-        "LOC",
-        "NAPTR",
-        "KX",
-        "CERT",
-        "DNAME",
-        "APL",
-        "DS",
-        "NSEC3",
-        "NSEC3PARAM",
-        "TLSA",
-        "SMIMEA",
-        "HIP",
-        "CDS",
-        "CDNSKEY",
-        "OPENPGPKEY",
-        "CSYNC",
-        "ZONEMD",
-        "SVCB",
-        "HTTPS",
-        "EUI48",
-        "EUI64",
-        "TKEY",
-        "TSIG",
-        "URI",
-        "CAA",
-        "TA",
-        "DLV",
-    }
-    for _, record := range dnsRecords {
-        recordType := valdateRecordType(record)
-        t.Log("Validating Record Type", record)
-        if recordType != record {
-            t.Errorf("Failed to validate record string")
-        }
-        t.Log("Success")
-    }
-}
+    "github.com/stretchr/testify/assert"
+)
 
 func TestDOHRequest(t *testing.T) {
 
@@ -74,70 +24,153 @@ func TestDOHRequest(t *testing.T) {
 
     for _,record := range dnsRecords {
         t.Log("Resolving", record, "Record")
-        body := DOHRequest("https://dns.google/resolve?name=", "exmaple.com", record)
+        timer1 := time.NewTimer(4 * time.Second)
+        google := make(chan []byte)
+        cloudflare := make(chan []byte)
+        quad9 := make(chan []byte)
+        providers := map[chan []byte]string{
+            cloudflare: "https://1.1.1.1/dns-query?name=",
+            google: "https://dns.google/resolve?name=",
+            quad9: "https://dns.quad9.net:5053/dns-query?name=",
+        }
+        for key, value := range providers {
+            go func(key chan []byte, value string) {
+                defer close(key)
+                body, err:= DOHRequest(value, "example.com", record)
+                if err != nil {
+                    time.Sleep(3 * time.Second)
+                    t.Errorf(fmt.Sprintf("Failed to decode: %v\n", err))
+                }
+                key <- body
+            }(key, value)
+        }
+
+        var body []byte
+
+        select {
+        case x := <-google:
+            body = x
+        case y := <-cloudflare:
+            body = y
+        case z := <-quad9:
+            body = z
+        case <-timer1.C:
+            t.Errorf("Request timed out")
+        }
         t.Log("Received", len(body), "bytes")
         if body == nil {
             t.Errorf("Empty reponse")
         }
     }
+    body, err := DOHRequest("htts://1.1.1.1/dns-query!name=", "i???", "?????")
+    assert.Nil(t, body)
+    assert.Error(t, err)
+}
+
+func TestMapRecords(t *testing.T) {
+    recordMap := map[int]string{
+        1: "A",
+        2: "NS",
+        5: "CNAME",
+        6: "SOA",
+        12: "PTR",
+        13: "HINFO",
+        15: "MX",
+        16: "TXT",
+        17: "RP",
+        18: "AFSDB",
+        24: "SIG",
+        25: "KEY",
+        28: "AAAA",
+        29: "LOC",
+        33: "SRV",
+        35: "NAPTR",
+        36: "KX",
+        37: "CERT",
+        39: "DNAME",
+        42: "APL",
+        43: "DS",
+        44: "SSHFP",
+        45: "IPSECKEY",
+        46: "RRSIG",
+        47: "NSEC",
+        48: "DNSKEY",
+        49: "DHCID",
+        50: "NSEC3",
+        51: "NSEC3PARAM",
+        52: "TLSA",
+        53: "SMIMEA",
+        55: "HIP",
+        59: "CDS",
+        60: "CDNSKEY",
+        61: "OPENPGPKEY",
+        62: "CSYNC",
+        63: "ZONEMD",
+        64: "SVCB",
+        65: "HTTPS",
+        108: "EUI48",
+        109: "EUI64",
+        249: "TKEY",
+        250: "TSIG",
+        256: "URI",
+        257: "CAA",
+        258: "AVC",
+        32768: "TA",
+        32769: "DLV",
+    }
+    for key, value := range recordMap {
+        assert.Equal(t, value, mapRecords(key))
+    }
 }
 
 func TestDecodeResponse(t *testing.T) {
-    data := []byte{
-        123,34,83,116,97,116,117,115,34,58,48,44,34,84,67,34,58,102,97,108,115,101,44,34,82,68,
-        34,58,116,114,117,101,44,34,82,65,34,58,116,114,117,101,44,34,65,68,34,58,116,114,117,
-        101,44,34,67,68,34,58,102,97,108,115,101,44,34,81,117,101,115,116,105,111,110,34,58,91,
-        123,34,110,97,109,101,34,58,34,101,120,97,109,112,108,101,46,99,111,109,34,44,34,116,
-        121,112,101,34,58,49,53,125,93,44,34,65,110,115,119,101,114,34,58,91,123,34,110,97,109,
-        101,34,58,34,101,120,97,109,112,108,101,46,99,111,109,34,44,34,116,121,112,101,34,58,49,
-        53,44,34,84,84,76,34,58,56,54,51,53,49,44,34,100,97,116,97,34,58,34,48,32,46,34,125,93,125,
+    // Test case 1: decode a valid JSON response for an A record
+    body := []byte(`{
+        "Answer": [
+            {
+                "name": "example.com",
+                "type": 1,
+                "TTL": 299,
+                "data": "93.184.216.34"
+            }
+        ]
+    }`)
+    dnsQuery := DNSQuery{}
+    dnsRecords := []DNSRecord{}
+    err := decodeResponse(body, &dnsQuery, &dnsRecords)
+    if err != nil {
+        t.Errorf("decodeResponse failed with error: %v", err)
+    }
+    if len(dnsRecords) != 1 {
+        t.Errorf("decodeResponse did not return expected number of DNS records")
+    }
+    if dnsRecords[0].Name != "example.com" || dnsRecords[0].Type != "A" || dnsRecords[0].TTL != 299 || dnsRecords[0].Data != "93.184.216.34" {
+        t.Errorf("decodeResponse returned unexpected DNS record: %v", dnsRecords[0])
     }
 
-    names, types, ttls, values := decodeResponse(data)
+    // Test case 2: decode an invalid JSON response
+    body = []byte(`invalid json`)
+    err = decodeResponse(body, &dnsQuery, &dnsRecords)
+    assert.Error(t, err)
+}
 
-    if len(names) > 0 {
-        t.Log("Decoded Data Successfully!")
-        t.Log("Decoded Values:",names,types,ttls,values)
-    } else {
-        t.Errorf("Unable to decode response")
+func TestRunQuery(t *testing.T) {
+    err := RunQuery("example.com", "a", false, false)
+    if err != nil {
+        t.Errorf("RunQuery did not return any DNS records")
     }
 }
 
-func TestResolveGoogle(t *testing.T) {
-
-    timer1 := time.NewTimer(1 * time.Second)
-    google := make(chan []byte)
-    go resolveGoogle("google.co.za", "a", google)
-    select {
-    case x := <-google:
-        t.Log("Received", len(x), "bytes")
-    case <-timer1.C:
-        t.Errorf("Response took longer than a second")
+func TestQueryExtensive(t *testing.T) {
+    err := QueryExtensive("example.com")
+    if err != nil {
+        t.Errorf("QueryExtensive did not return any DNS records")
     }
 }
 
-func TestResolveCloudflare(t *testing.T) {
-
-    timer1 := time.NewTimer(1 * time.Second)
-    cloudflare := make(chan []byte)
-    go resolveCloudflare("cloudflare.net", "a", cloudflare)
-    select {
-    case x := <-cloudflare:
-        t.Log("Received", len(x), "bytes")
-    case <-timer1.C:
-        t.Errorf("Response took longer than a second")
-    }
-}
-
-func TestResolveQuad9(t *testing.T) {
-
-    timer1 := time.NewTimer(1 * time.Second)
-    quad9 := make(chan []byte)
-    go resolveQuad9("quad9.net", "a", quad9)
-    select {
-    case x := <-quad9:
-        t.Log("Received", len(x), "bytes")
-    case <-timer1.C:
-        t.Errorf("Response took longer than a second")
+func TestQueryAll(t *testing.T) {
+    err := QueryAll("example.com")
+    if err != nil {
+        t.Errorf("QueryAll did not return any DNS records")
     }
 }
