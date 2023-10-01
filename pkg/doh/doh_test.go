@@ -1,9 +1,12 @@
 package doh
 
 import (
-	"fmt"
-	"testing"
+    // "errors"
+    "testing"
     "time"
+    "fmt"
+
+    "github.com/stretchr/testify/assert"
 )
 
 func TestDOHRequest(t *testing.T) {
@@ -33,7 +36,7 @@ func TestDOHRequest(t *testing.T) {
         for key, value := range providers {
             go func(key chan []byte, value string) {
                 defer close(key)
-                body, err:= DOHRequest(value, "example.com", "a")
+                body, err:= DOHRequest(value, "example.com", record)
                 if err != nil {
                     time.Sleep(3 * time.Second)
                     t.Errorf(fmt.Sprintf("Failed to decode: %v\n", err))
@@ -59,26 +62,59 @@ func TestDOHRequest(t *testing.T) {
             t.Errorf("Empty reponse")
         }
     }
+    body, err := DOHRequest("htts://1.1.1.1/dns-query!name=", "i???", "?????")
+    assert.Nil(t, body)
+    assert.Error(t, err)
 }
 
 func TestDecodeResponse(t *testing.T) {
-    data := []byte{
-        123,34,83,116,97,116,117,115,34,58,48,44,34,84,67,34,58,102,97,108,115,101,44,34,82,68,
-        34,58,116,114,117,101,44,34,82,65,34,58,116,114,117,101,44,34,65,68,34,58,116,114,117,
-        101,44,34,67,68,34,58,102,97,108,115,101,44,34,81,117,101,115,116,105,111,110,34,58,91,
-        123,34,110,97,109,101,34,58,34,101,120,97,109,112,108,101,46,99,111,109,34,44,34,116,
-        121,112,101,34,58,49,53,125,93,44,34,65,110,115,119,101,114,34,58,91,123,34,110,97,109,
-        101,34,58,34,101,120,97,109,112,108,101,46,99,111,109,34,44,34,116,121,112,101,34,58,49,
-        53,44,34,84,84,76,34,58,56,54,51,53,49,44,34,100,97,116,97,34,58,34,48,32,46,34,125,93,125,
-    }
+    // Test case 1: decode a valid JSON response for an A record
+    body := []byte(`{
+        "Answer": [
+            {
+                "name": "example.com",
+                "type": 1,
+                "TTL": 299,
+                "data": "93.184.216.34"
+            }
+        ]
+    }`)
     dnsQuery := DNSQuery{}
     dnsRecords := []DNSRecord{}
-    err := decodeResponse(data, &dnsQuery, &dnsRecords)
+    err := decodeResponse(body, &dnsQuery, &dnsRecords)
+    if err != nil {
+        t.Errorf("decodeResponse failed with error: %v", err)
+    }
+    if len(dnsRecords) != 1 {
+        t.Errorf("decodeResponse did not return expected number of DNS records")
+    }
+    if dnsRecords[0].Name != "example.com" || dnsRecords[0].Type != "A" || dnsRecords[0].TTL != 299 || dnsRecords[0].Data != "93.184.216.34" {
+        t.Errorf("decodeResponse returned unexpected DNS record: %v", dnsRecords[0])
+    }
 
-    if len(dnsRecords) > 0 && err == nil {
-        t.Log("Decoded Data Successfully!")
-        t.Log("Decoded Values:", dnsRecords)
-    } else {
-        t.Errorf("Unable to decode response")
+    // Test case 2: decode an invalid JSON response
+    body = []byte(`invalid json`)
+    err = decodeResponse(body, &dnsQuery, &dnsRecords)
+    assert.Error(t, err)
+}
+
+func TestRunQuery(t *testing.T) {
+    err := RunQuery("example.com", "a", false, false)
+    if err != nil {
+        t.Errorf("RunQuery did not return any DNS records")
+    }
+}
+
+func TestQueryExtensive(t *testing.T) {
+    err := QueryExtensive("example.com")
+    if err != nil {
+        t.Errorf("QueryExtensive did not return any DNS records")
+    }
+}
+
+func TestQueryAll(t *testing.T) {
+    err := QueryAll("example.com")
+    if err != nil {
+        t.Errorf("QueryAll did not return any DNS records")
     }
 }

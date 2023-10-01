@@ -9,6 +9,7 @@ import (
     "strings"
     "time"
     "errors"
+    "sync"
 )
 
 // DNSRecord type for storing unmarshaled JSON data
@@ -193,7 +194,7 @@ func decodeResponse(body []byte, dnsQuery *DNSQuery, dnsRecords *[]DNSRecord) (e
     return nil
 }
 
-func RunQuery(queryName, queryType string, extensive bool, json bool) {
+func RunQuery(queryName, queryType string, extensive bool, json bool) (error) {
     timer1 := time.NewTimer(4 * time.Second)
     google := make(chan []byte)
     cloudflare := make(chan []byte)
@@ -204,14 +205,15 @@ func RunQuery(queryName, queryType string, extensive bool, json bool) {
         quad9: "https://dns.quad9.net:5053/dns-query?name=",
     }
     for key, value := range providers {
-        go func(key chan []byte, value string) {
+        go func(key chan []byte, value string) error {
             defer close(key)
             body, err:= DOHRequest(value, queryName, queryType)
             if err != nil {
                 time.Sleep(3 * time.Second)
-                log.Fatalln(err)
+                return err
             }
             key <- body
+            return nil
         }(key, value)
     }
 
@@ -230,7 +232,10 @@ func RunQuery(queryName, queryType string, extensive bool, json bool) {
     dnsQuery := DNSQuery{}
     dnsRecords := []DNSRecord{}
     err := decodeResponse(body, &dnsQuery, &dnsRecords)
-    if err != nil || json {
+    if err != nil {
+        return err
+    }
+    if json {
         fmt.Println(string(body))
     } else {
         if extensive && len(dnsRecords) > 0 {
@@ -244,9 +249,10 @@ func RunQuery(queryName, queryType string, extensive bool, json bool) {
             dnsRecords[i].Data)
         }
     }
+    return nil
 }
 
-func QueryExtensive(queryName string) {
+func QueryExtensive(queryName string) error {
 
     dnsRecords := []string{
         "SOA",
@@ -291,12 +297,23 @@ func QueryExtensive(queryName string) {
         "TA",
         "DLV",
     }
+    var wg sync.WaitGroup
     for _, record := range dnsRecords {
-        RunQuery(queryName, record, true, false)
+        wg.Add(1)
+        go func(queryName string, record string) error {
+            defer wg.Done()
+            err := RunQuery(queryName, record, true, false)
+            if err != nil {
+                return err
+            }
+            return nil
+        }(queryName, record)
     }
+    wg.Wait()
+    return nil
 }
 
-func QueryAll(queryName string) {
+func QueryAll(queryName string) error {
 
     dnsRecords := []string{
         "SOA",
@@ -308,7 +325,18 @@ func QueryAll(queryName string) {
         "SRV",
         "TXT",
     }
+    var wg sync.WaitGroup
     for _, record := range dnsRecords {
-        RunQuery(queryName, record, false, false)
+        wg.Add(1)
+        go func(queryName string, record string) error {
+            defer wg.Done()
+            err := RunQuery(queryName, record, false, false)
+            if err != nil {
+                return err
+            }
+            return nil
+        }(queryName, record)
     }
+    wg.Wait()
+    return nil
 }
